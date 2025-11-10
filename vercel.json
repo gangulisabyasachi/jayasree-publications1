@@ -3,8 +3,7 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node",
-      "config": { "distDir": "dist" }
+      "use": "@vercel/node"
     },
     {
       "src": "dist/public/**",
@@ -12,12 +11,13 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/dist/server/index.js" },
-    { "src": "/(.*)", "dest": "/dist/public/$1" }
-  ],
-  "functions": {
-    "dist/server/index.js": {
-      "runtime": "nodejs20.x"
+    {
+      "src": "/api/(.*)",
+      "dest": "/dist/server/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/public/$1"
     }
-  }
+  ]
 }
