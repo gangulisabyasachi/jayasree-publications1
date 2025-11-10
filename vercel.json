@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "functions": {
+    "dist/server/index.js": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 10
+    }
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "dist/public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/dist/server/index.js" },
+    { "src": "/(.*)", "dest": "/dist/public/$1" }
+  ]
+}
