@@ -10,18 +10,41 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ---- Middleware ----
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ---- Paths (Vercel-safe) ----
+const TMP_DIR = '/tmp';
+const BOOKS_PATH = path.join(TMP_DIR, 'books.json');
+const UPLOADS_DIR = path.join(TMP_DIR, 'uploads');
+const DEFAULT_BOOKS = [
+  {
+    id: "1",
+    title: "The Art of Storytelling",
+    author: "Margaret Atwood",
+    synopsis: "A masterful exploration of narrative craft...",
+    coverImage: "/attached_assets/generated_images/Classic_fiction_book_cover_abefd1ac.png",
+    publicationDate: "March 2024"
+  },
+  // ... include all 5 default books here (or load from public/default-books.json)
+];
 
-// Serve static files (works in both environments)
+// Ensure directories exist
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+} catch (err) {
+  console.error('Failed to create uploads dir:', err);
+}
+
+// ---- Middleware ----
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files
 app.use(express.static('public'));
 app.use('/attached_assets', express.static('attached_assets'));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(UPLOADS_DIR));
 
-// ---- Multer (file upload) ----
+// ---- Multer (save to /tmp/uploads) ----
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -30,7 +53,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp/;
     const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
@@ -39,20 +62,32 @@ const upload = multer({
   }
 });
 
-// ---- books.json helpers ----
+// ---- books.json helpers (use /tmp) ----
 const getBooksData = () => {
   try {
-    return JSON.parse(fs.readFileSync('books.json', 'utf8'));
-  } catch {
-    return [];
+    if (fs.existsSync(BOOKS_PATH)) {
+      const data = fs.readFileSync(BOOKS_PATH, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error reading books:', err);
+  }
+  // Return defaults if file missing/corrupted
+  return [...DEFAULT_BOOKS];
+};
+
+const saveBooksData = (books) => {
+  try {
+    fs.writeFileSync(BOOKS_PATH, JSON.stringify(books, null, 2));
+  } catch (err) {
+    console.error('Error saving books:', err);
   }
 };
 
-const saveBooksData = (books) =>
-  fs.writeFileSync('books.json', JSON.stringify(books, null, 2));
-
 // ---- API Routes ----
-app.get('/api/books', (req, res) => res.json(getBooksData()));
+app.get('/api/books', (req, res) => {
+  res.json(getBooksData());
+});
 
 app.get('/api/books/:id', (req, res) => {
   const book = getBooksData().find(b => b.id === req.params.id);
@@ -102,8 +137,12 @@ app.delete('/api/books/:id', (req, res) => {
 
   const book = books[idx];
   if (book.coverImage?.startsWith('/uploads/')) {
-    const imgPath = path.join(__dirname, book.coverImage.replace(/^\//, ''));
-    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    const imgPath = path.join(UPLOADS_DIR, path.basename(book.coverImage));
+    try {
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    } catch (err) {
+      console.error('Failed to delete image:', err);
+    }
   }
 
   books.splice(idx, 1);
@@ -111,34 +150,25 @@ app.delete('/api/books/:id', (req, res) => {
   res.json({ message: 'Book deleted successfully' });
 });
 
-// -------------------------------------------------
-//  VERCEL SERVERLESS + LOCAL DEV ENTRY POINT
-// -------------------------------------------------
+// ---- VERCEL + LOCAL SERVER ----
 let handler;
 
 if (process.env.VERCEL) {
-  // Vercel serverless – export raw HTTP server
-  const server = createServer(app);
-  handler = server;
+  // Vercel: export server
+  handler = createServer(app);
 } else {
-  // Local development – use dynamic port with fallback
+  // Local dev
   const PORT = process.env.PORT || 5000;
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Local server running at http://localhost:${server.address().port}`);
+    console.log(`Local server: http://localhost:${server.address().port}`);
   });
 
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      const nextPort = PORT + 1;
-      console.error(`Port ${PORT} busy → trying ${nextPort}`);
-      app.listen(nextPort, '0.0.0.0', () => {
-        console.log(`Server now running at http://localhost:${nextPort}`);
-      });
-    } else {
-      console.error('Server error:', err);
+      console.log(`Port ${PORT} busy, trying ${PORT + 1}`);
+      app.listen(PORT + 1, '0.0.0.0');
     }
   });
 }
 
-// Export for Vercel
 module.exports = handler;
