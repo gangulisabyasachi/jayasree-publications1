@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cornerstone Books - Where Stories Find Their Readers</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="container nav-container">
+            <a href="/" class="logo">Cornerstone Books</a>
+            <div class="nav-links">
+                <a href="/" class="active">Home</a>
+                <a href="/pages/publications.html">Publications</a>
+                <a href="/pages/about.html">About</a>
+                <a href="/pages/contact.html">Contact</a>
+                <a href="/pages/admin.html" class="admin-link">Admin</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero" style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/attached_assets/generated_images/Bookstore_interior_hero_image_31e8ac7d.png');">
+            <div class="hero-content">
+                <h1 class="hero-title">Where Stories Find Their Readers</h1>
+                <p class="hero-subtitle">Discover carefully curated literary works in our independent bookstore</p>
+                <a href="/pages/publications.html" class="btn btn-primary btn-lg">
+                    Browse Our Collection
+                    <span>→</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <h2 class="section-title">Featured Publications</h2>
+                <p class="section-subtitle">A selection from our curated collection</p>
+                <div id="featuredBooks" class="book-grid featured"></div>
+            </div>
+        </section>
+
+        <section class="section" style="background-color: var(--color-muted);">
+            <div class="container">
+                <h2 class="section-title">Our Values</h2>
+                <div class="values-grid">
+                    <div class="value-card">
+                        <h3>Curation Over Quantity</h3>
+                        <p>Every book in our collection is thoughtfully selected for its literary merit and cultural significance.</p>
+                    </div>
+                    <div class="value-card">
+                        <h3>Community Connection</h3>
+                        <p>We believe in fostering meaningful conversations between readers, authors, and ideas.</p>
+                    </div>
+                    <div class="value-card">
+                        <h3>Independent Spirit</h3>
+                        <p>Supporting diverse voices and championing works that might otherwise go unnoticed.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="footer-section">
+                <h3 class="footer-title">Cornerstone Books</h3>
+                <p class="footer-text">An independent bookstore curating exceptional literary works for discerning readers.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Quick Links</h4>
+                <div class="footer-links">
+                    <a href="/pages/publications.html">Publications</a>
+                    <a href="/pages/about.html">About</a>
+                    <a href="/pages/contact.html">Contact</a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Visit Us</h4>
+                <p class="footer-text">123 Literary Lane<br>New York, NY 10001</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Cornerstone Books. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        fetch('/api/books')
+            .then(res => res.json())
+            .then(books => {
+                const featured = books.slice(0, 4);
+                const container = document.getElementById('featuredBooks');
+                
+                if (featured.length === 0) {
+                    container.innerHTML = '<p class="text-center">No books available yet.</p>';
+                    return;
+                }
+                
+                container.innerHTML = featured.map(book => `
+                    <a href="/pages/book-detail.html?id=${book.id}" class="book-card">
+                        <div class="book-cover">
+                            <img src="${book.coverImage}" alt="${book.title}">
+                        </div>
+                        <div class="book-info">
+                            <h3 class="book-title">${book.title}</h3>
+                            <p class="book-author">${book.author}</p>
+                            <p class="book-date">${book.publicationDate}</p>
+                        </div>
+                    </a>
+                `).join('');
+            });
+    </script>
+</body>
+</html>
