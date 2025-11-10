@@ -3,20 +3,18 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { createServer } from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ---- PORT CONFIG (flexible) ----
-const PORT = process.env.PORT || 5000;
-
 // ---- Middleware ----
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files
+// Serve static files (works in both environments)
 app.use(express.static('public'));
 app.use('/attached_assets', express.static('attached_assets'));
 app.use('/uploads', express.static('uploads'));
@@ -113,20 +111,34 @@ app.delete('/api/books/:id', (req, res) => {
   res.json({ message: 'Book deleted successfully' });
 });
 
-// ---- START SERVER (with error handling) ----
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running at http://localhost:${server.address().port}`);
-});
+// -------------------------------------------------
+//  VERCEL SERVERLESS + LOCAL DEV ENTRY POINT
+// -------------------------------------------------
+let handler;
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is busy. Trying next port...`);
-    // Try next port automatically
-    const nextPort = PORT + 1;
-    app.listen(nextPort, '0.0.0.0', () => {
-      console.log(`Server now running at http://localhost:${nextPort}`);
-    });
-  } else {
-    console.error('Server error:', err);
-  }
-});
+if (process.env.VERCEL) {
+  // Vercel serverless – export raw HTTP server
+  const server = createServer(app);
+  handler = server;
+} else {
+  // Local development – use dynamic port with fallback
+  const PORT = process.env.PORT || 5000;
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Local server running at http://localhost:${server.address().port}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const nextPort = PORT + 1;
+      console.error(`Port ${PORT} busy → trying ${nextPort}`);
+      app.listen(nextPort, '0.0.0.0', () => {
+        console.log(`Server now running at http://localhost:${nextPort}`);
+      });
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+}
+
+// Export for Vercel
+module.exports = handler;
