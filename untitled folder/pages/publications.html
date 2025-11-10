@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publications - Cornerstone Books</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="container nav-container">
+            <a href="/" class="logo">Cornerstone Books</a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/pages/publications.html" class="active">Publications</a>
+                <a href="/pages/about.html">About</a>
+                <a href="/pages/contact.html">Contact</a>
+                <a href="/pages/admin.html">Admin</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="section">
+            <div class="container">
+                <h1 class="section-title">Our Publications</h1>
+                <p class="section-subtitle">Browse our carefully curated collection of literary works</p>
+                <div id="booksContainer" class="book-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="footer-section">
+                <h3 class="footer-title">Cornerstone Books</h3>
+                <p class="footer-text">An independent bookstore curating exceptional literary works for discerning readers.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Quick Links</h4>
+                <div class="footer-links">
+                    <a href="/pages/publications.html">Publications</a>
+                    <a href="/pages/about.html">About</a>
+                    <a href="/pages/contact.html">Contact</a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Visit Us</h4>
+                <p class="footer-text">123 Literary Lane<br>New York, NY 10001</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Cornerstone Books. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        fetch('/books.json')
+            .then(res => res.json())
+            .then(books => {
+                const container = document.getElementById('booksContainer');
+                
+                if (books.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center" style="grid-column: 1 / -1; padding: 4rem 0;">
+                            <h2 style="font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: 1rem;">No Publications Yet</h2>
+                            <p style="color: var(--color-muted-foreground);">Our collection is currently being curated. Please check back soon.</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = books.map(book => `
+                        <a href="/pages/book-detail.html?id=${book.id}" class="book-card">
+                            <div class="book-cover">
+                                <img src="${book.coverImage}" alt="${book.title}">
+                            </div>
+                            <div class="book-info">
+                                <h3 class="book-title">${book.title}</h3>
+                                <p class="book-author">${book.author}</p>
+                                <p class="book-date">${book.publicationDate}</p>
+                            </div>
+                        </a>
+                    `).join('');
+                }
+            })
+            .catch(err => {
+                console.error('Error loading books:', err);
+                document.getElementById('booksContainer').innerHTML = '<p class="text-center">Unable to load books at this time.</p>';
+            });
+    </script>
+</body>
+</html>
