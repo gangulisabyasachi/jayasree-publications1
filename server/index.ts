@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// === Raw body for webhooks (e.g. Stripe, GitHub) ===
+// === Raw body for webhooks ===
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -65,7 +65,7 @@ let server: any;
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
-    throw err; // Let it crash in dev, caught in prod
+    throw err;
   });
 
   // === DEVELOPMENT: Vite HMR ===
@@ -76,14 +76,25 @@ let server: any;
   // === PRODUCTION: Serve built React app ===
   else {
     const publicPath = path.join(__dirname, "..", "..", "dist", "public");
+
+    // 1. Serve static files (CSS, JS, images)
     app.use(express.static(publicPath));
 
-    // SPA fallback — but don't catch /api
+    // 2. SPA Fallback — MUST BE LAST
     app.get("*", (req, res) => {
+      // Skip API routes
       if (req.path.startsWith("/api")) {
         return res.status(404).json({ error: "API route not found" });
       }
-      res.sendFile(path.join(publicPath, "index.html"));
+
+      // Serve index.html for ALL client routes: /admin, /about, etc.
+      const indexPath = path.join(publicPath, "index.html");
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error("Failed to send index.html:", err);
+          res.status(500).send("Internal Server Error");
+        }
+      });
     });
   }
 
@@ -97,7 +108,6 @@ let server: any;
       {
         port,
         host,
-        // reusePort is NOT supported on macOS (Node 22+)
         ...(isMacOS ? {} : { reusePort: true }),
       },
       () => {
